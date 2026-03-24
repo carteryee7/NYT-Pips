@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+        width: 220px;
+        padding: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #1a1a2e;
+        color: #eee;
+        }
+
+        h1 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: #f4a261;
+        letter-spacing: 0.5px;
+        }
+
+        .difficulty-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+        }
+
+        .diff-btn {
+        flex: 1;
+        padding: 5px 0;
+        border: 1px solid #444;
+        border-radius: 6px;
+        background: #2a2a3e;
+        color: #aaa;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+        }
+
+        .diff-btn.active {
+        border-color: #f4a261;
+        color: #f4a261;
+        background: #2e2218;
+        }
+
+        .btn {
+        width: 100%;
+        padding: 9px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 8px;
+        transition: opacity 0.15s, transform 0.1s;
+        }
+
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-solve {
+        background: #e63946;
+        color: white;
+        }
+
+        .btn-hint {
+        background: #f4a261;
+        color: #1a1a2e;
+        }
+
+        .btn-clear {
+        background: #2a2a3e;
+        color: #aaa;
+        border: 1px solid #444;
+        }
+
+        .hint-bar {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+        }
+
+        .hint-pip {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #f4a261;
+        opacity: 1;
+        transition: opacity 0.3s;
+        }
+
+        .hint-pip.used {
+        opacity: 0.2;
+        }
+
+        #status {
+        font-size: 11px;
+        color: #888;
+        min-height: 16px;
+        line-height: 1.4;
+        }
+
+        #status.ok    { color: #4caf50; }
+        #status.error { color: #e63946; }
+        #status.warn  { color: #f4a261; }
+    </style>
+</head>
+<body>
+
+    <h1>🧩 Pips Solver</h1>
+
+    <!-- Difficulty selector -->
+    <div class="difficulty-row">
+        <button class="diff-btn active" data-diff="easy">Easy</button>
+        <button class="diff-btn"        data-diff="medium">Medium</button>
+        <button class="diff-btn"        data-diff="hard">Hard</button>
+    </div>
+
+    <!-- Hint counter pips -->
+    <div class="hint-bar" id="hintBar">
+        <div class="hint-pip" id="pip0"></div>
+        <div class="hint-pip" id="pip1"></div>
+        <div class="hint-pip" id="pip2"></div>
+    </div>
+
+    <button class="btn btn-solve" id="solveBtn">Solve Puzzle</button>
+    <button class="btn btn-hint"  id="hintBtn"  disabled>💡 Hint</button>
+    <button class="btn btn-clear" id="clearBtn">Clear</button>
+
+    <div id="status">Ready — open the Pips puzzle first.</div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

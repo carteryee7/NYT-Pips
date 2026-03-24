@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Pips Puzzle Solver",
+  "version": "1.0.0",
+  "description": "Solves the NYT Pips puzzle with optional hints.",
+  "permissions": ["activeTab", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.nytimes.com/games/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.nytimes.com/games/pips*"],
+      "js": ["solver.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
