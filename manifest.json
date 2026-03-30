@@ -3,9 +3,9 @@
   "name": "Pips Puzzle Solver",
   "version": "1.0.0",
   "description": "Solves the NYT Pips puzzle with optional hints.",
-  "permissions": ["activeTab", "scripting", "tabs"],
+  "permissions": ["activeTab", "tabs"],
   "host_permissions": [
-    "https://www.nytimes.com/games/*"
+    "https://www.nytimes.com/*"
   ],
   "content_scripts": [
     {
