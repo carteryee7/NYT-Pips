@@ -257,25 +257,27 @@ function renderDominoBoundaries(cellMap, gameData, difficulty) {
       overflow: hidden;
     `;
 
+    const leftCellRect = rectA.left <= rectB.left ? rectA : rectB;
+    const topCellRect = rectA.top <= rectB.top ? rectA : rectB;
+    const dividerThickness = 2;
+
     const divider = document.createElement('div');
     divider.style.cssText = sameRow
       ? `
           position: absolute;
-          left: ${rectA.right < rectB.left ? rectA.width : rectB.width}px;
+          left: ${((leftCellRect.right + Math.max(rectA.left, rectB.left)) / 2) - left - (dividerThickness / 2)}px;
           top: 0;
-          width: 2px;
+          width: ${dividerThickness}px;
           height: 100%;
-          transform: translateX(-1px);
           background: ${dominoColor};
           opacity: 0.9;
         `
       : `
           position: absolute;
-          top: ${rectA.bottom < rectB.top ? rectA.height : rectB.height}px;
+          top: ${((topCellRect.bottom + Math.max(rectA.top, rectB.top)) / 2) - top - (dividerThickness / 2)}px;
           left: 0;
           width: 100%;
-          height: 2px;
-          transform: translateY(-1px);
+          height: ${dividerThickness}px;
           background: ${dominoColor};
           opacity: 0.9;
         `;
@@ -337,6 +339,43 @@ function getCurrentBoardState(cellMap) {
     }
   }
   return state;
+}
+
+function getPlacedDominoes(gameData, difficulty, boardState) {
+  const d = gameData[difficulty];
+  if (!d?.solution || !d?.dominoes) return [];
+
+  const placed = [];
+
+  d.solution.forEach((placement, i) => {
+    if (!placement || placement.length < 2) return;
+
+    const domino = d.dominoes[i];
+    if (!domino || domino.length < 2) return;
+
+    const [[r1, c1], [r2, c2]] = placement;
+    const keyA = `${r1},${c1}`;
+    const keyB = `${r2},${c2}`;
+
+    const userA = boardState[keyA];
+    const userB = boardState[keyB];
+    const isPlaced = userA !== undefined && userB !== undefined;
+
+    const expectedA = Number(domino[0]);
+    const expectedB = Number(domino[1]);
+    const isCorrect = isPlaced && userA === expectedA && userB === expectedB;
+
+    placed.push({
+      index: i,
+      cells: [keyA, keyB],
+      expected: [expectedA, expectedB],
+      current: [userA, userB],
+      isPlaced,
+      isCorrect,
+    });
+  });
+
+  return placed;
 }
 
 // ─── Hint Manager ─────────────────────────────────────────────────────────────
@@ -493,6 +532,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const gameData = await waitForGameData();
           const cellMap  = buildCellMap(gameData, difficulty);
           sendResponse({ ok: true, boardState: getCurrentBoardState(cellMap) });
+          break;
+        }
+
+        case 'getPlacedDominoes': {
+          const gameData = await waitForGameData();
+          const cellMap = buildCellMap(gameData, difficulty);
+          const boardState = getCurrentBoardState(cellMap);
+          const placedDominoes = getPlacedDominoes(gameData, difficulty, boardState);
+
+          sendResponse({
+            ok: true,
+            placedDominoes,
+            placedCount: placedDominoes.filter(d => d.isPlaced).length,
+            correctCount: placedDominoes.filter(d => d.isCorrect).length,
+            total: placedDominoes.length,
+          });
           break;
         }
 
