@@ -10,6 +10,11 @@ let _solution   = null;
 let _hintMgr    = null;
 let _overlayEls = [];
 
+const DOMINO_COLORS = [
+  '#e63946', '#457b9d', '#2a9d8f', '#f4a261', '#8e6c8a',
+  '#6d597a', '#4d908e', '#bc6c25', '#3a86ff', '#9b5de5',
+];
+
 // ─── Game Data Access ─────────────────────────────────────────────────────────
 
 /**
@@ -198,6 +203,89 @@ function clearOverlays() {
   _overlayEls = [];
 }
 
+function renderDominoBoundaries(cellMap, gameData, difficulty) {
+  const d = gameData[difficulty];
+  if (!d?.solution) return;
+
+  const boardCell = [...cellMap.values()][0]?.parentElement;
+  if (!boardCell) return;
+
+  const boardRoot = boardCell.offsetParent || boardCell.parentElement || document.body;
+  if (getComputedStyle(boardRoot).position === 'static') {
+    boardRoot.style.position = 'relative';
+  }
+
+  const boardRect = boardRoot.getBoundingClientRect();
+
+  for (const [index, placement] of d.solution.entries()) {
+    if (!placement || placement.length < 2) continue;
+
+    const dominoColor = DOMINO_COLORS[index % DOMINO_COLORS.length];
+
+    const [a, b] = placement;
+    const keyA = `${a[0]},${a[1]}`;
+    const keyB = `${b[0]},${b[1]}`;
+    const cellA = cellMap.get(keyA);
+    const cellB = cellMap.get(keyB);
+    if (!cellA || !cellB) continue;
+
+    const sameRow = a[0] === b[0];
+    const sameCol = a[1] === b[1];
+    if (!sameRow && !sameCol) continue;
+
+    const rectA = cellA.getBoundingClientRect();
+    const rectB = cellB.getBoundingClientRect();
+    const left = Math.min(rectA.left, rectB.left) - boardRect.left;
+    const top = Math.min(rectA.top, rectB.top) - boardRect.top;
+    const right = Math.max(rectA.right, rectB.right) - boardRect.left;
+    const bottom = Math.max(rectA.bottom, rectB.bottom) - boardRect.top;
+
+    const boundary = document.createElement('div');
+    boundary.className = 'pips-solver-boundary';
+    boundary.style.cssText = `
+      position: absolute;
+      left: ${left}px;
+      top: ${top}px;
+      width: ${right - left}px;
+      height: ${bottom - top}px;
+      box-sizing: border-box;
+      pointer-events: none;
+      z-index: 9998;
+      border: 3px solid ${dominoColor};
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      overflow: hidden;
+    `;
+
+    const divider = document.createElement('div');
+    divider.style.cssText = sameRow
+      ? `
+          position: absolute;
+          left: ${rectA.right < rectB.left ? rectA.width : rectB.width}px;
+          top: 0;
+          width: 2px;
+          height: 100%;
+          transform: translateX(-1px);
+          background: ${dominoColor};
+          opacity: 0.9;
+        `
+      : `
+          position: absolute;
+          top: ${rectA.bottom < rectB.top ? rectA.height : rectB.height}px;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          transform: translateY(-1px);
+          background: ${dominoColor};
+          opacity: 0.9;
+        `;
+
+    boundary.appendChild(divider);
+    boardRoot.appendChild(boundary);
+    _overlayEls.push(boundary);
+  }
+}
+
 function renderOverlay(cellMap, solutionMap, color = '#e63946', onlyKeys = null) {
   for (const [key, value] of Object.entries(solutionMap)) {
     if (onlyKeys && !onlyKeys.has(key)) continue;
@@ -364,6 +452,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const cellMap  = buildCellMap(gameData, difficulty);
           clearOverlays();
           renderOverlay(cellMap, _solution, '#e63946');
+          renderDominoBoundaries(cellMap, gameData, difficulty);
           sendResponse({ ok: true });
           break;
         }
