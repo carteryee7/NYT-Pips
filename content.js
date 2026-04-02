@@ -67,7 +67,7 @@ function extractSolutionFromGameData(gameData, difficulty) {
 // ─── Cell Map ─────────────────────────────────────────────────────────────────
 
 function buildCellMap(gameData, difficulty) {
-  const cells   = document.querySelectorAll('.Board-module_droppableCell__ndah2');
+  const cells   = Array.from(document.querySelectorAll('[class*="droppableCell"]'));
   const cellMap = new Map();
 
   if (!cells.length) {
@@ -83,12 +83,96 @@ function buildCellMap(gameData, difficulty) {
     }
   }
 
+  const keySet = new Set(allCoords.map(([r, c]) => `${r},${c}`));
+
+  // Try mapping by explicit row/col attributes first.
+  for (const cell of cells) {
+    const rowRaw = cell.dataset.row ?? cell.getAttribute('data-row');
+    const colRaw = cell.dataset.col ?? cell.getAttribute('data-col');
+    if (rowRaw == null || colRaw == null) continue;
+    const r = Number(rowRaw);
+    const c = Number(colRaw);
+    if (Number.isInteger(r) && Number.isInteger(c)) {
+      const key = `${r},${c}`;
+      if (keySet.has(key)) cellMap.set(key, cell);
+    }
+  }
+
+  if (cellMap.size === keySet.size) return cellMap;
+
+  // Fallback: infer grid coordinates from on-screen geometry.
+  const positioned = cells
+    .map(cell => {
+      const rect = cell.getBoundingClientRect();
+      return {
+        cell,
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    })
+    .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+
+  const clusterAxis = (values, tolerance = 6) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const buckets = [];
+    for (const v of sorted) {
+      const last = buckets[buckets.length - 1];
+      if (!last || Math.abs(v - last.center) > tolerance) {
+        buckets.push({ center: v, count: 1 });
+      } else {
+        last.center = (last.center * last.count + v) / (last.count + 1);
+        last.count += 1;
+      }
+    }
+    return buckets.map(b => b.center);
+  };
+
+  const rows = clusterAxis(positioned.map(p => p.y));
+  const cols = clusterAxis(positioned.map(p => p.x));
+
+  if (rows.length && cols.length) {
+    const nearestIdx = (arr, value) => {
+      let best = 0;
+      let bestDist = Math.abs(arr[0] - value);
+      for (let i = 1; i < arr.length; i++) {
+        const d = Math.abs(arr[i] - value);
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      }
+      return best;
+    };
+
+    const grid = new Map();
+    for (const p of positioned) {
+      const r = nearestIdx(rows, p.y);
+      const c = nearestIdx(cols, p.x);
+      const key = `${r},${c}`;
+      if (!grid.has(key)) grid.set(key, p.cell);
+    }
+
+    for (const [r, c] of allCoords) {
+      const key = `${r},${c}`;
+      const cell = grid.get(key);
+      if (cell) cellMap.set(key, cell);
+    }
+  }
+
+  if (cellMap.size === keySet.size) return cellMap;
+
   // Sort row-major (top-left → bottom-right) to match DOM order
   allCoords.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
 
+  const fallbackMap = new Map();
   allCoords.forEach((coord, i) => {
-    if (cells[i]) cellMap.set(`${coord[0]},${coord[1]}`, cells[i]);
+    if (cells[i]) fallbackMap.set(`${coord[0]},${coord[1]}`, cells[i]);
   });
+
+  // Keep any successfully inferred mappings, fill missing keys from fallback.
+  for (const [key, cell] of fallbackMap.entries()) {
+    if (!cellMap.has(key)) cellMap.set(key, cell);
+  }
 
   return cellMap;
 }
@@ -144,8 +228,8 @@ function getCurrentBoardState(cellMap) {
   const state = {};
   for (const [key, cell] of cellMap.entries()) {
     const val = cell.dataset.placedValue
-             ?? cell.querySelector('[data-value]')?.dataset.value
-             ?? cell.querySelector('.pip-value')?.textContent?.trim();
+            ?? cell.querySelector('[data-value]')?.dataset.value
+            ?? cell.querySelector('.pip-value')?.textContent?.trim();
     if (val !== undefined && val !== null && val !== '') {
       state[key] = parseInt(val);
     }
