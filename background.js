@@ -16,7 +16,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     // ── Fetch puzzle data from NYT API ──────────────────────────────────────
     if (msg.action === 'getGameData') {
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const localDate = new Date();
+        const today = [
+          localDate.getFullYear(),
+          String(localDate.getMonth() + 1).padStart(2, '0'),
+          String(localDate.getDate()).padStart(2, '0'),
+        ].join('-');
         const url = `https://www.nytimes.com/svc/pips/v1/${today}.json`;
 
         const resp = await fetch(url, {

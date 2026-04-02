@@ -19,13 +19,27 @@ let _overlayEls = [];
  */
 function waitForGameData() {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage({ action: 'getGameData' }, (resp) => {
-      if (resp?.ok && resp.gameData) {
-        resolve(resp.gameData);
-      } else {
-        reject(new Error(resp?.error ?? 'Could not load game data.'));
-      }
-    });
+    const startedAt = Date.now();
+    const timeoutMs = 15000;
+    const retryDelayMs = 350;
+
+    const attempt = () => {
+      chrome.runtime.sendMessage({ action: 'getGameData' }, (resp) => {
+        if (resp?.ok && resp.gameData) {
+          resolve(resp.gameData);
+          return;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+          reject(new Error(resp?.error ?? 'window.gameData did not load in time.'));
+          return;
+        }
+
+        setTimeout(attempt, retryDelayMs);
+      });
+    };
+
+    attempt();
   });
 }
 
